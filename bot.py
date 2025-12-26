@@ -618,7 +618,7 @@ async def balance(interaction: discord.Interaction):
 @bot.tree.command(
     name="shop",
     description="Open the black market",
-    guild=discord.Object(id=GUILD_ID)
+    guild=discord.Object(id=1451761878089990257)
 )
 async def shop(interaction: discord.Interaction):
 
