@@ -63,6 +63,38 @@ SHOP_ITEMS = {
     "Fertilizer": 1200,
     "Advanced Fertilizer": 6000
 }
+SHOP_PAGES = [
+    {
+        "title": "🛒 Shop Page 1",
+        "items": [
+            "Advanced Lockpick",
+            "Weed OG Seed",
+            "Pestle & Mortar",
+            "Chemical Beaker",
+            "Portable Meth Lab"
+        ]
+    },
+    {
+        "title": "🛒 Shop Page 2",
+        "items": [
+            "Meth Test Kit",
+            "Egg Timer",
+            "Hydrochloric Acid",
+            "Red Phosphorus",
+            "Lithium"
+        ]
+    },
+    {
+        "title": "🛒 Shop Page 3",
+        "items": [
+            "Pseudoephedrine",
+            "Acetone",
+            "5.56×45 Ammo",
+            "Liquid Fertilizer",
+            "Watering Can"
+        ]
+    },
+]
 
 # ======================
 # PERMISSION CHECK
@@ -180,6 +212,98 @@ class StockModal(discord.ui.Modal):
         save_stock()
         await interaction.message.edit(content=text)
         await interaction.response.send_message("✅ Stock updated", ephemeral=True)
+# ======================
+# CART SYSTEM
+# ======================
+
+user_carts = {}
+
+CART_PAGES = {
+    1: ["Advanced Lockpick", "Weed OG Seed", "Pestle & Mortar", "Chemical Beaker"],
+    2: ["Portable Meth Lab", "Meth Test Kit", "Egg Timer", "Hydrochloric Acid"],
+    3: ["Red Phosphorus", "Lithium", "Pseudoephedrine", "Acetone"],
+    4: ["5.56×45 Ammo", "Liquid Fertilizer", "Watering Can", "Fertilizer", "Advanced Fertilizer"]
+}
+
+
+class CartModal(discord.ui.Modal):
+    def __init__(self, user_id, cart_number):
+        super().__init__(title=f"Cart {cart_number}")
+        self.user_id = user_id
+        self.cart_number = cart_number
+
+        self.inputs = {}
+        for item in CART_PAGES[cart_number]:
+            field = discord.ui.TextInput(
+                label=item,
+                placeholder="Enter quantity",
+                required=False
+            )
+            self.add_item(field)
+            self.inputs[item] = field
+
+    async def on_submit(self, interaction: discord.Interaction):
+        user_carts.setdefault(self.user_id, {})
+
+        for item, field in self.inputs.items():
+            if field.value:
+                user_carts[self.user_id][item] = int(field.value)
+
+        await interaction.response.send_message(
+            f"✅ Cart {self.cart_number} updated.",
+            ephemeral=True
+        )
+
+
+class ShopView(discord.ui.View):
+    def __init__(self, user_id):
+        super().__init__(timeout=300)
+        self.user_id = user_id
+
+    @discord.ui.button(label="🛒 Cart 1", style=discord.ButtonStyle.primary)
+    async def cart1(self, interaction, button):
+        await interaction.response.send_modal(CartModal(self.user_id, 1))
+
+    @discord.ui.button(label="🛒 Cart 2", style=discord.ButtonStyle.primary)
+    async def cart2(self, interaction, button):
+        await interaction.response.send_modal(CartModal(self.user_id, 2))
+
+    @discord.ui.button(label="🛒 Cart 3", style=discord.ButtonStyle.primary)
+    async def cart3(self, interaction, button):
+        await interaction.response.send_modal(CartModal(self.user_id, 3))
+
+    @discord.ui.button(label="🛒 Cart 4", style=discord.ButtonStyle.primary)
+    async def cart4(self, interaction, button):
+        await interaction.response.send_modal(CartModal(self.user_id, 4))
+
+    @discord.ui.button(label="✅ Final Submit", style=discord.ButtonStyle.success)
+    async def submit(self, interaction, button):
+        cart = user_carts.get(self.user_id)
+
+        if not cart:
+            await interaction.response.send_message("❌ Cart is empty.", ephemeral=True)
+            return
+
+        total = 0
+        text = ""
+
+        for item, qty in cart.items():
+            price = SHOP_ITEMS[item]
+            total += price * qty
+            text += f"• **{item}** × {qty} = ₹{price * qty:,}\n"
+
+        embed = discord.Embed(
+            title="🧾 FINAL ORDER",
+            description=text,
+            color=0x8B0000
+        )
+        embed.add_field(name="💰 Total", value=f"₹{total:,}")
+        embed.add_field(name="👤 Buyer", value=interaction.user.mention)
+
+        await interaction.channel.send(embed=embed)
+        await interaction.response.send_message("✅ Order placed!", ephemeral=True)
+
+        user_carts.pop(self.user_id, None)
 
 # ======================
 # SHOP MODAL
@@ -399,24 +523,6 @@ async def setup_distribution(interaction: discord.Interaction):
         view=DistributionView()
     )
     await interaction.response.send_message("✅ Distribution panel created", ephemeral=True)
-    # ======================
-# SHOP COMMAND
-# ======================
-@bot.tree.command(
-    name="shop",
-    description="Open the black market shop",
-    guild=discord.Object(id=1451761878089990257)
-)
-async def shop(interaction: discord.Interaction):
-
-    if not any(role.name == "Syndicate Member" for role in interaction.user.roles):
-        await interaction.response.send_message(
-            "❌ Only Syndicate Members can use this.",
-            ephemeral=True
-        )
-        return
-
-    await interaction.response.send_modal(ShopModal())
 
 # ======================
 # BANK COMMANDS (MANAGEMENT ONLY)
@@ -504,6 +610,28 @@ async def withdraw(interaction: discord.Interaction, amount: int, reason: str):
 async def balance(interaction: discord.Interaction):
     await interaction.response.send_message(
         f"🏦 **Current Black Balance:** ₹{black_balance:,}",
+        ephemeral=True
+    )
+# ======================
+# SHOP COMMAND
+# ======================
+@bot.tree.command(
+    name="shop",
+    description="Open the black market",
+    guild=discord.Object(id=GUILD_ID)
+)
+async def shop(interaction: discord.Interaction):
+
+    if not any(role.name == "Syndicate Member" for role in interaction.user.roles):
+        await interaction.response.send_message(
+            "❌ Only Syndicate Members can use this.",
+            ephemeral=True
+        )
+        return
+
+    await interaction.response.send_message(
+        "🛒 **Black Market**\nChoose a cart:",
+        view=ShopView(interaction.user.id),
         ephemeral=True
     )
 
