@@ -420,14 +420,59 @@ async def on_ready():
 @bot.event
 async def on_member_join(member):
     channel = discord.utils.get(member.guild.text_channels, name=WELCOME_CHANNEL_NAME)
-    if channel:
-        await channel.send(
-            f"🕷️ **WELCOME TO THE SYNDICATE**\n\n"
-            f"{member.mention}\n"
-            f"Use `/setname Firstname Lastname` in **#{NAME_CHANGE_CHANNEL}**\n"
-            f"⚠️ One-time only."
-        )
+    if not channel:
+        return
 
+    embed = discord.Embed(
+        title="Welcome to NARCOS CITY",
+        description=(
+            "**GTA Roleplay Server With**\n"
+            "**Advanced Gang System,**\n"
+            "**Business Role Play And Citizen Activities**"
+        ),
+        color=0x1e1e1e  # Dark clean color
+    )
+
+    # Profile Image (top right)
+    embed.set_thumbnail(url=member.display_avatar.url)
+
+    # User Info
+    embed.add_field(name="Member", value=member.mention, inline=True)
+    embed.add_field(name="Name", value=member.name, inline=True)
+    embed.add_field(name="ID", value=member.id, inline=True)
+
+    embed.add_field(name="Nickname", value=member.nick or "None", inline=True)
+    embed.add_field(
+        name="Account Created",
+        value=member.created_at.strftime("%A, %B %d, %Y"),
+        inline=True
+    )
+    embed.add_field(
+        name="Join Date",
+        value=member.joined_at.strftime("%A, %B %d, %Y"),
+        inline=True
+    )
+
+    embed.add_field(
+        name="Go through our Discord Rules",
+        value="🔒 No Access",
+        inline=False
+    )
+
+    embed.add_field(
+        name="Joined From",
+        value=f"<t:{int(member.joined_at.timestamp())}:R>",
+        inline=False
+    )
+
+    # 🔥 BANNER IMAGE (your Narcos welcome image)
+    embed.set_image(
+        url="https://cdn.discordapp.com/attachments/1453640241947607152/1455032052331188370/ChatGPT_Image_Dec_29_2025_08_19_55_AM.png?ex=69533fb2&is=6951ee32&hm=f4f6c7cf552d329f38dc19dc9ab38a07fca3824aad2fd4bbef549fdcbbcf0560&"
+    )
+
+    embed.set_footer(text=f"Member #{member.guild.member_count}")
+
+    await channel.send(embed=embed)
 # ======================
 # /SETNAME (ONE TIME)
 # ======================
